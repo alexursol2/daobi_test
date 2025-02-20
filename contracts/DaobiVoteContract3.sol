@@ -71,11 +71,11 @@ contract DaobiVoteContract is ERC721, ERC721URIStorage, Pausable, AccessControl 
     }*/
 
     function refreshTokenURI() public {
-        require(ownerOf(uint160(address(msg.sender))) == msg.sender, "Only token owner can update URI");
+        // incorrect require it will revert ERC721NonexistentToken
         _setTokenURI(uint160(address(msg.sender)), URIaddr);
     }
 
-    function mint(address to) public onlyRole(MINTER_ROLE) {
+    function mint(address to) public onlyRole(MINTER_ROLE){
         require(balanceOf(to) == 0, "Account already has a token");
         daobi.transferFrom(to, address(this), stake_amount);
         stakes[to] = stake_amount;
@@ -136,14 +136,20 @@ contract DaobiVoteContract is ERC721, ERC721URIStorage, Pausable, AccessControl 
         voterRegistry[_voteFor].votesAccrued++;
         emit Voted(msg.sender, _voteFor);
     }
-/*
+
     function burn(address _account) public onlyRole(BURNER_ROLE) {
-        require(balanceOf(_account) > 0, "No token to burn");
         voterRegistry[_account].serving = false;
         _burn(uint160(_account));
         emit Burnt(_account);
     } 
 
+    
+    function voluntary_burn() public{
+        _burn(uint160(msg.sender));
+        daobi.transfer(msg.sender, stakes[msg.sender]);
+        emit Burnt(msg.sender);
+    }
+/*
     function selfImmolate() public {
         require(balanceOf(msg.sender) > 0, "No token to burn");
         voterRegistry[msg.sender].serving = false;

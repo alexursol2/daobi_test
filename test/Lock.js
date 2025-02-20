@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { bigint } = require("hardhat/internal/core/params/argumentTypes");
 
 describe("DAObi Contract", function () {
 
@@ -40,8 +41,6 @@ describe("DAObi Contract", function () {
     await vote.grantRole(await vote.VOTE_ADMIN_ROLE(), voteAdmin.address);
     await vote.grantRole(await vote.MINREQ_ROLE(), minReqAdmin.address);
 
-    // Set the DAObi contract address in the vote contract
-    await vote.connect(voteAdmin).targetDaobi(addr1);
   });
 
   describe("DAObi", function () {
@@ -372,8 +371,9 @@ describe("DAObi Contract", function () {
     describe("Minting", function () {
       it("Should mint a new token", async function () {
         // Set stake amount and approve tokens
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
         
-        await daobi.connect(owner).approve(vote.address, 10);
+        await daobi.connect(owner).approve(await vote.getAddress(), 10);
   
         // Mint token
         await vote.connect(minter).mint(owner);
@@ -381,10 +381,11 @@ describe("DAObi Contract", function () {
       });
   
       it("Should fail to mint if account already has a token", async function () {
-        await daobi.transfer(addr1.address, ethers.utils.parseEther("1000"));
-        await daobi.connect(addr1).approve(vote.address, ethers.utils.parseEther("1000"));
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
+        await daobi.transfer(addr1, 1000);
+        await daobi.connect(addr1).approve(await vote.getAddress(), 1000);
   
-        await vote.connect(minter).mint(addr1.address);
+        await vote.connect(minter).mint(addr1);
         await expect(vote.connect(minter).mint(addr1.address)).to.be.revertedWith(
           "Account already has a token"
         );
@@ -400,19 +401,26 @@ describe("DAObi Contract", function () {
   
     describe("Voting", function () {
       it("Should register and vote", async function () {
-        await daobi.transfer(addr1.address, ethers.utils.parseEther("1000"));
-        await daobi.connect(addr1).approve(vote.address, ethers.utils.parseEther("1000"));
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
+        await daobi.transfer(addr1, 1000);
+        await daobi.connect(addr1).approve(await vote.getAddress(), 1000);
   
-        await vote.connect(minter).mint(addr1.address);
-        await vote.connect(minter).mint(addr2.address);
+        await vote.connect(minter).mint(addr1);
   
-        await vote.connect(addr1).register(addr2.address, ethers.utils.formatBytes32String("Alice"));
-        await vote.connect(addr1).vote(addr2.address);
+        await vote.connect(addr1).register(addr1, ethers.encodeBytes32String("Alice"));
+        await vote.connect(addr1).vote(addr1);
   
-        expect(await vote.assessVotes(addr2.address)).to.equal(1);
+        expect(await vote.assessVotes(addr1)).to.equal(1);
       });
   
       it("Should fail to vote if not registered", async function () {
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
+        await daobi.transfer(addr1, 1000);
+        await daobi.connect(addr1).approve(await vote.getAddress(), 1000);
+  
+        await vote.connect(minter).mint(addr1);
+        
+
         await expect(vote.connect(addr1).vote(addr2.address)).to.be.revertedWith(
           "Not registered"
         );
@@ -423,19 +431,83 @@ describe("DAObi Contract", function () {
           "You don't have a token"
         );
       });
+
+      it("Invalid candidate in vote function", async function () {
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
+        await daobi.transfer(addr1, 1000);
+        await daobi.connect(addr1).approve(await vote.getAddress(), 1000);
+  
+        await vote.connect(minter).mint(addr1);
+  
+        await vote.connect(addr1).register(addr1, ethers.encodeBytes32String("Alice"));
+        await expect(vote.connect(addr1).vote(addr2)).to.be.revertedWith(
+          "Invalid candidate"
+        );
+      });
+
+      it("Insufficient balance in vote function", async function () {
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
+        await daobi.transfer(addr1, 1000);
+        await daobi.connect(addr1).approve(await vote.getAddress(), 1000);
+  
+        await vote.connect(minter).mint(addr1);
+  
+        await vote.connect(addr1).register(addr1, ethers.encodeBytes32String("Alice"));
+        await vote.connect(minReqAdmin).setMinimumTokenReq(1010);
+        await expect(vote.connect(addr1).vote(addr1)).to.be.revertedWith(
+          "Insufficient balance"
+        );
+      });
+    });
+
+    describe("Recluse", function () {
+      it("Successful recluse when stakedAmount > 0", async function () {
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
+        await daobi.transfer(addr1, 1000);
+        await daobi.connect(addr1).approve(await vote.getAddress(), 1000);
+        
+        await vote.connect(minter).mint(addr1);
+        await vote.connect(addr1).register(addr1, ethers.encodeBytes32String("Alice"));
+  
+        await vote.connect(addr1).recluse();
+      });
+
+      it("Recluse already inactive", async function () {
+        await expect(vote.connect(addr1).recluse()).to.be.revertedWith(
+          "Already inactive"
+        );
+      });
+    });
+
+    describe("Burn", function () {
+      it("Successful burn", async function () {
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
+        
+        await daobi.connect(owner).approve(await vote.getAddress(), 10);
+  
+        // Mint token
+        await vote.connect(minter).mint(owner);
+        await vote.connect(owner).voluntary_burn();
+      });
+
+      it("Successful voluntary burn", async function () {
+
+      });
     });
   
     describe("Small Functions", function () {
       it("Refresh Token URI", async function () {
-        // await vote.refreshTokenURI();
-      });
-
-      it("Not the owner for Refresh Token URI", async function () {
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
         
+        await daobi.connect(owner).approve(await vote.getAddress(), 10);
+  
+        // Mint token
+        await vote.connect(minter).mint(owner);
+        await vote.refreshTokenURI();
       });
 
       it("Target Daobi", async function () {
-        await vote.connect(voteAdmin).targetDaobi(daobi.address);
+        await vote.connect(voteAdmin).targetDaobi(await daobi.getAddress());
       });
 
       it("You don`t have a role for Target Daobi", async function () {

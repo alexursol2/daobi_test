@@ -82,6 +82,58 @@ describe("DAObi Contract", function () {
       });
     });
 
+    describe("Minting", function () {
+      it("Successful mint", async function () {
+        
+      });
+
+      it("Mint Must pass non 0 DB amount", async function () {
+        
+      });
+    });
+
+    describe("Make Claim", function () {
+      it("Successful make claim", async function () {
+        
+      });
+
+      it("Daobi: You don't even have a voting token!", async function () {
+        
+      });
+
+      it("Daobi: You have withdrawn from service!", async function () {
+        
+      });
+
+      it("Daobi: You need AT LEAST one vote!", async function () {
+        
+      });
+
+      it("You are already Chancellor!", async function () {
+        
+      });
+    });
+
+    describe("Recover Seal", function () {
+      it("Successful recover seal", async function () {
+        
+      });
+
+      it("Only the Chancellor can reclaim this Seal!", async function () {
+        
+      });
+
+      it("The Seal doesn't currently exist", async function () {
+        
+      });
+    });
+
+    describe("Assume Chancellorship", function () {
+      it("Successful assume chancellorship", async function () {
+        
+      });
+    });
+
     describe("Claiming Chancellor Salary", function () {
       it("Should claim chancellor salary", async function () {
         await ethers.provider.send("evm_increaseTime", [86400]); // Increase time by 24 hours
